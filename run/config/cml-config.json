@@ -1,0 +1,20 @@
+{
+  "adds": [
+    {
+      "id": "inertiaanticheat",
+      "name": "InertiaAntiCheat",
+      "version": "0.0.7.2+1.20.1",
+      "describe": "Stop people from using unwanted mods on your server!",
+      "environment": "UNIVERSAL",
+      "license": "GPL-3.0",
+      "authors": [
+        "DiffuseHyperion"
+      ]
+    }
+  ],
+  "removes": [
+    "wurst",
+    "meteor",
+    "cml"
+  ]
+}

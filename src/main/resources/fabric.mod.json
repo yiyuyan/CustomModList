@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "id": "cml",
+  "version": "${version}",
+  "name": "CustomModList",
+  "description": "Custom your mod list.",
+  "authors": [],
+  "contact": {},
+  "license": "MIT",
+  "environment": "client",
+  "entrypoints": {
+    "preLaunch": [
+      "cn.ksmcbrigade.cml.CustomModList"
+    ]
+  },
+  "mixins": [
+    "cml.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=${loader_version}",
+    "fabric": "*",
+    "minecraft": "${minecraft_version}"
+  }
+}
