@@ -30,6 +30,7 @@ glintSpeed:0.5
 glintStrength:0.75
 damageTiltStrength:1.0
 highContrast:false
+gamma:0.5
 renderDistance:12
 simulationDistance:12
 entityDistanceScaling:1.0
@@ -44,7 +45,7 @@ renderClouds:"true"
 resourcePacks:["fabric"]
 incompatibleResourcePacks:[]
 lastServer:
-lang:en_us
+lang:zh_cn
 soundDevice:""
 chatVisibility:0
 chatOpacity:1.0
@@ -71,7 +72,7 @@ tutorialStep:none
 mouseWheelSensitivity:1.0
 rawMouseInput:true
 glDebugVerbosity:1
-skipMultiplayerWarning:false
+skipMultiplayerWarning:true
 skipRealms32bitWarning:false
 hideMatchedNames:true
 joinedFirstServer:false

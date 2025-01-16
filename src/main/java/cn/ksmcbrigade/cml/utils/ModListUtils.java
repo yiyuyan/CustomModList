@@ -1,6 +1,8 @@
 package cn.ksmcbrigade.cml.utils;
 
-import cn.ksmcbrigade.cml.config.Config;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.ModInitializer;
@@ -10,6 +12,7 @@ import net.fabricmc.loader.api.metadata.*;
 import net.fabricmc.loader.impl.FabricLoaderImpl;
 import net.fabricmc.loader.impl.ModContainerImpl;
 import net.fabricmc.loader.impl.discovery.ModCandidate;
+import net.fabricmc.loader.impl.entrypoint.EntrypointStorage;
 import net.fabricmc.loader.impl.metadata.*;
 import net.fabricmc.loader.impl.util.version.StringVersion;
 
@@ -20,7 +23,7 @@ import java.nio.file.Paths;
 import java.util.*;
 
 public class ModListUtils {
-    public static modEntryPoints remove(String modId) throws NoSuchFieldException, IllegalAccessException {
+    public static modEntryPoints remove(String modId) throws NoSuchFieldException, IllegalAccessException, ClassNotFoundException, InvocationTargetException, NoSuchMethodException {
         modEntryPoints result = getEntryPoints(modId);
 
         FabricLoaderImpl loader = FabricLoaderImpl.INSTANCE;
@@ -59,6 +62,33 @@ public class ModListUtils {
         }
         if(container!=null) mods.remove(container);
 
+        EntrypointStorage storage = (EntrypointStorage)modEntryPointsField.get(loader);
+        Field field = storage.getClass().getDeclaredField("entryMap");
+        field.setAccessible(true);
+        Map<String,List<Object>> map = new HashMap<>(Map.copyOf((Map<String, List<Object>>) field.get(storage)));
+        Class<?> entryClass = Class.forName("net.fabricmc.loader.impl.entrypoint.EntrypointStorage$Entry");
+        Method getModContainerMethodField = entryClass.getDeclaredMethod("getModContainer");
+        getModContainerMethodField.setAccessible(true);
+        ArrayList<Object> points = new ArrayList<>();
+        ArrayList<Object> mainPoints = new ArrayList<>();
+        for (Object client : map.get("client")) {
+            ModContainerImpl mod = (ModContainerImpl) getModContainerMethodField.invoke(client);
+            if(!mod.getMetadata().getId().equalsIgnoreCase(modId)){
+                points.add(client);
+            }
+        }
+        for (Object main : map.get("main")) {
+            ModContainerImpl mod = (ModContainerImpl) getModContainerMethodField.invoke(main);
+            if(!mod.getMetadata().getId().equalsIgnoreCase(modId)){
+                mainPoints.add(main);
+            }
+        }
+        map.replace("client",map.get("client"),points);
+        map.replace("main",map.get("main"),mainPoints);
+
+        field.set(storage,map);
+        modEntryPointsField.set(loader,storage);
+
         modMapField.set(loader,modMap);
         modCandidatesField.set(loader,modCandidates);
         modsField.set(loader,mods);
@@ -66,7 +96,7 @@ public class ModListUtils {
         return result;
     }
 
-    public static void add(Config.modInfo info) throws NoSuchMethodException, InvocationTargetException, IllegalAccessException, NoSuchFieldException {
+    public static void add(modInfo info) throws NoSuchMethodException, InvocationTargetException, IllegalAccessException, NoSuchFieldException {
         Method createMethod = ModCandidate.class.getDeclaredMethod("createPlain", List.class, LoaderModMetadata.class, boolean.class, Collection.class);
         LoaderModMetadata metadata = new LoaderModMetadata() {
             @Override
@@ -271,4 +301,44 @@ public class ModListUtils {
     }
 
     public record modEntryPoints(ArrayList<EntrypointContainer<ModInitializer>> mains, ArrayList<EntrypointContainer<ClientModInitializer>> clients){}
+
+    public record modInfo(String modId, String modName, String modVersion, String describe, ModEnvironment environment, String license,List<String> modAuthors){
+        public JsonObject get(){
+            JsonObject object = new JsonObject();
+            object.addProperty("id",modId);
+            object.addProperty("name",modName);
+            object.addProperty("version",modVersion);
+            object.addProperty("describe",describe);
+            object.addProperty("environment",environment.name());
+            object.addProperty("license",license);
+            object.add("authors",authors());
+            return object;
+        }
+
+        private JsonArray authors(){
+            JsonArray array = new JsonArray();
+            for (String s : this.modAuthors) {
+                array.add(s);
+            }
+            return array;
+        }
+
+        public static modInfo parse(JsonObject object) throws RuntimeException{
+            if(!object.has("id")) throw new RuntimeException("Can not find the mod id.");
+            String id = object.get("id").getAsString(),name = "mod",version = "1.0",describe = "",license = "MIT";
+            ModEnvironment environment = ModEnvironment.UNIVERSAL;
+            ArrayList<String> authors = new ArrayList<>();
+            if(object.has("name")) name = object.get("name").getAsString();
+            if(object.has("version")) version = object.get("version").getAsString();
+            if(object.has("describe")) describe = object.get("describe").getAsString();
+            if(object.has("license")) license = object.get("license").getAsString();
+            if(object.has("environment")) environment = ModEnvironment.valueOf(object.get("environment").getAsString());
+            if(object.has("authors") && object.get("authors") instanceof JsonArray array){
+                for (JsonElement element : array) {
+                    authors.add(element.getAsString());
+                }
+            }
+            return new modInfo(id,name,version,describe,environment,license,authors);
+        }
+    }
 }

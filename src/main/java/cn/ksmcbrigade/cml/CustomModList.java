@@ -1,6 +1,7 @@
 package cn.ksmcbrigade.cml;
 
 import cn.ksmcbrigade.cml.config.Config;
+import cn.ksmcbrigade.cml.config.TempConfigs;
 import cn.ksmcbrigade.cml.utils.ModListUtils;
 import net.fabricmc.loader.api.entrypoint.PreLaunchEntrypoint;
 import org.apache.logging.log4j.LogManager;
@@ -26,8 +27,15 @@ public class CustomModList implements PreLaunchEntrypoint {
 
     @Override
     public void onPreLaunch() {
-        LOGGER.info("Custom Mod List mod loaded.");
-        for (Config.modInfo add : config.adds) {
+        LOGGER.info("Custom Mod List mod loading.");
+        try {
+            ModListUtils.remove("cml");
+        } catch (NoSuchFieldException | IllegalAccessException | ClassNotFoundException | InvocationTargetException |
+                 NoSuchMethodException e) {
+            config.removes.add("cml");
+            LOGGER.error("Failed to remove self in the mod list: cml",e);
+        }
+        for (ModListUtils.modInfo add : config.adds) {
             try {
                 ModListUtils.add(add);
                 LOGGER.info("Added a fake mod: {}", add.modName());
@@ -37,11 +45,17 @@ public class CustomModList implements PreLaunchEntrypoint {
         }
         for (String remove : config.removes) {
             try {
-                ModListUtils.remove(remove);
+                ModListUtils.modEntryPoints points = ModListUtils.remove(remove);
+                TempConfigs.mainPoints.addAll(points.mains());
+                TempConfigs.clientPoints.addAll(points.clients());
                 LOGGER.info("Removed a mod in the mod list: {}", remove);
-            } catch (IllegalAccessException | NoSuchFieldException e) {
-                LOGGER.info("Failed to add a fake mod: {}",remove,e);
+            } catch (IllegalAccessException | NoSuchFieldException | ClassNotFoundException |
+                     InvocationTargetException | NoSuchMethodException e) {
+                LOGGER.info("Failed to remove a mod in the mod list: {}",remove,e);
             }
         }
+        LOGGER.info("Custom Mod List mod loaded.");
     }
+
+
 }
